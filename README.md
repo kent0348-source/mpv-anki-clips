@@ -4,7 +4,7 @@
 
 `MPV Anki Clips` is a heavily customized fork of [mpvacious](https://github.com/Ajatt-Tools/mpvacious) for creating and updating Anki notes from video while you watch.
 
-![Logo](example_screenshots\Screenshot2_resized.png)
+![Logo](example_screenshots/Screenshot2_resized.png)
 
 ## What This Fork Does
 
