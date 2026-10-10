@@ -1,0 +1,23 @@
+[package]
+name = "mpv-anki-clips-config"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.92"
+build = "build.rs"
+
+[dependencies]
+dirs = "6.0"
+rfd = "0.15"
+slint = { version = "=1.18.1", default-features = false, features = ["std", "compat-1-2", "backend-winit", "renderer-software"] }
+tempfile = "3.14"
+
+[build-dependencies]
+slint-build = "=1.18.1"
+winres = "0.1.12"
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"

@@ -1,0 +1,52 @@
+services:
+  queue:
+    build:
+      context: .
+    restart: unless-stopped
+    init: true
+    privileged: false
+    ports:
+      # Publish only on a private LAN address. Never set QUEUE_PUBLISH_IP to
+      # 0.0.0.0, ::, or a public/WAN address. QUEUE_HOST_PORT is the host-side
+      # TCP port; the container continues to listen on 56789 internally.
+      # Avoid 56789 (localhost queue) and Windows Hyper-V excluded ranges.
+      - target: 56789
+        published: "${QUEUE_HOST_PORT:-18789}"
+        host_ip: "${QUEUE_PUBLISH_IP:?Set QUEUE_PUBLISH_IP to this host's private LAN IP, not 0.0.0.0}"
+        protocol: tcp
+    environment:
+      QUEUE_HOST: "0.0.0.0"
+      QUEUE_PORT: "56789"
+      QUEUE_PUBLISH_IP: "${QUEUE_PUBLISH_IP:?Set QUEUE_PUBLISH_IP to this host's private LAN IP, not 0.0.0.0}"
+      QUEUE_DATABASE: "/data/queue.db"
+      QUEUE_LEASE_SECONDS: "${QUEUE_LEASE_SECONDS:-30}"
+      QUEUE_REASSIGNMENT_GRACE_SECONDS: "${QUEUE_REASSIGNMENT_GRACE_SECONDS:-10}"
+      QUEUE_SWEEP_SECONDS: "${QUEUE_SWEEP_SECONDS:-1}"
+      QUEUE_MAX_JOBS: "${QUEUE_MAX_JOBS:-1000}"
+      QUEUE_MAX_BODY_BYTES: "${QUEUE_MAX_BODY_BYTES:-65536}"
+    networks:
+      - queue
+    volumes:
+      - queue-data:/data
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 128m
+    cpus: 0.50
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+networks:
+  queue:
+    driver: bridge
+    enable_ipv6: false
+
+volumes:
+  queue-data:

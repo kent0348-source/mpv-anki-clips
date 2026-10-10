@@ -1,0 +1,681 @@
+import { Button, ComboBox, LineEdit, ScrollView } from "std-widgets.slint";
+
+global ClipEncodePalette {
+    out property <color> background: #242424;
+    out property <color> foreground: #FFFFFF;
+    out property <color> secondary: #9d9e9e;
+    out property <color> disabled-value: #666666;
+    out property <color> shipped-default: #d8d0b9;
+    out property <color> shipped-base-value: #8CFF00;
+    out property <color> changed-base-value: #FFEF3F;
+    out property <color> inherited-value: #afafaf;
+    out property <color> override-value: #00ffd5;
+    out property <color> active: #8CFF00;
+    out property <color> accent: #c43f8f;
+}
+
+component ColorLineEdit inherits Rectangle {
+    in-out property <string> text;
+    in property <color> value-color;
+    in property <bool> enabled: true;
+    callback edited(string);
+    property <bool> show-clear: input.has-focus && root.enabled && !root.text.is-empty;
+
+    min-height: 32px;
+    border-radius: 4px;
+    border-width: 1px;
+    border-color: input.has-focus ? ClipEncodePalette.accent : #5a5a5a;
+    background: root.enabled ? #303030 : #2a2a2a;
+    forward-focus: input;
+    accessible-role: text-input;
+    accessible-enabled: root.enabled;
+    accessible-value <=> root.text;
+    accessible-action-set-value(value) => {
+        root.text = value;
+        root.edited(value);
+    }
+    accessible-action-set-selection-offsets(anchor, focus) => {
+        input.set-selection-offsets(anchor, focus);
+    }
+
+    input := TextInput {
+        x: 12px;
+        width: parent.width - (root.show-clear ? 48px : 24px);
+        height: 100%;
+        vertical-alignment: center;
+        single-line: true;
+        enabled: root.enabled;
+        text <=> root.text;
+        color: root.value-color;
+        accessible-role: none;
+        edited => { root.edited(self.text); }
+    }
+
+    if root.show-clear: Text {
+        x: parent.width - 34px;
+        width: 24px;
+        height: parent.height;
+        vertical-alignment: center;
+        horizontal-alignment: center;
+        color: root.value-color;
+        text: "×";
+
+        TouchArea {
+            clicked => {
+                root.text = "";
+                root.edited("");
+                input.focus();
+            }
+        }
+    }
+}
+
+component ColorComboBox inherits Rectangle {
+    in property <[string]> model;
+    in property <int> selected-index;
+    in-out property <string> current-value;
+    in property <color> value-color;
+    in property <bool> enabled: true;
+    callback selected(string);
+
+    property <int> current-index: root.selected-index;
+    property <int> visible-items: min(6, root.model.length);
+    property <bool> popup-has-focus: false;
+    min-height: 32px;
+    horizontal-stretch: 1;
+    border-radius: 4px;
+    border-width: 1px;
+    border-color: combo-focus.has-focus ? ClipEncodePalette.accent : #5a5a5a;
+    background: root.enabled ? #303030 : #2a2a2a;
+    forward-focus: combo-focus;
+    accessible-role: combobox;
+    accessible-enabled: root.enabled;
+    accessible-expandable: true;
+    accessible-expanded: root.popup-has-focus;
+    accessible-value <=> root.current-value;
+    accessible-action-expand => { popup.show(); }
+    property <length> scroll-delta: 2px;
+
+    changed selected-index => {
+        root.current-index = root.selected-index;
+    }
+
+    function select(index: int) {
+        if index >= 0 && index < root.model.length {
+            root.current-value = root.model[index];
+            root.selected(root.current-value);
+        }
+    }
+
+    combo-focus := FocusScope {
+        enabled: root.enabled;
+
+        key-pressed(event) => {
+            if event.text == Key.DownArrow {
+                root.select(min(root.current-index + 1, root.model.length - 1));
+                return accept;
+            }
+            if event.text == Key.UpArrow {
+                root.select(max(root.current-index - 1, 0));
+                return accept;
+            }
+            if event.text == Key.Return {
+                popup.show();
+                return accept;
+            }
+            reject
+        }
+
+        TouchArea {
+            enabled: root.enabled;
+            clicked => {
+                combo-focus.focus();
+                popup.show();
+            }
+
+            scroll-event(event) => {
+                if (!root.enabled || !combo-focus.has-focus) {
+                    return reject;
+                }
+                if event.delta-y < -root.scroll-delta {
+                    root.select(min(root.current-index + 1, root.model.length - 1));
+                    return accept;
+                }
+                if event.delta-y > root.scroll-delta {
+                    root.select(max(root.current-index - 1, 0));
+                    return accept;
+                }
+                reject
+            }
+        }
+    }
+
+    Text {
+        x: 12px;
+        width: parent.width - 40px;
+        height: parent.height;
+        vertical-alignment: center;
+        overflow: elide;
+        color: root.value-color;
+        text: root.current-value;
+    }
+    Text {
+        x: parent.width - 28px;
+        width: 16px;
+        height: parent.height;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+        color: root.enabled ? ClipEncodePalette.secondary : ClipEncodePalette.disabled-value;
+        text: "▾";
+    }
+
+    popup := PopupWindow {
+        x: 0;
+        y: -4px;
+        width: root.width;
+        height: max(1, root.visible-items) * 36px + 8px;
+        close-policy: close-on-click-outside;
+        forward-focus: popup-focus;
+
+        popup-focus := FocusScope {
+            focus-changed-event => {
+                root.popup-has-focus = self.has-focus;
+            }
+
+            key-pressed(event) => {
+                if event.text == Key.DownArrow {
+                    root.select(min(root.current-index + 1, root.model.length - 1));
+                    return accept;
+                }
+                if event.text == Key.UpArrow {
+                    root.select(max(root.current-index - 1, 0));
+                    return accept;
+                }
+                if event.text == Key.Return || event.text == Key.Escape {
+                    popup.close();
+                    return accept;
+                }
+                reject
+            }
+
+            Rectangle {
+                background: #303030;
+                border-width: 1px;
+                border-color: #5a5a5a;
+                border-radius: 4px;
+
+                ScrollView {
+                    x: 1px;
+                    y: 1px;
+                    width: parent.width - 2px;
+                    height: parent.height - 2px;
+                    content-width: self.width;
+
+                    VerticalLayout {
+                        padding: 4px;
+                        spacing: 2px;
+
+                        for value[index] in root.model: Rectangle {
+                            height: 32px;
+                            background: option-touch.has-hover
+                                ? #454545
+                                : index == root.current-index ? #3b3b3b : #303030;
+
+                            Text {
+                                x: 8px;
+                                width: parent.width - 16px;
+                                height: parent.height;
+                                vertical-alignment: center;
+                                color: root.value-color;
+                                text: value;
+                            }
+
+                            option-touch := TouchArea {
+                                clicked => {
+                                    root.select(index);
+                                    popup.close();
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+export struct SettingRowData {
+    key: string,
+    label: string,
+    value: string,
+    base-value: string,
+    default-value: string,
+    choice-index: int,
+    choices: [string],
+    scope-value: string,
+    scope-choice-index: int,
+    scope-choices: [string],
+    description: string,
+    enabled: bool,
+    has-inherit: bool,
+    category: bool,
+}
+
+export struct ToolScanRow {
+    name: string,
+    found-on-path: bool,
+    path: string,
+    other-paths: [string],
+}
+
+export struct AssociationRow {
+    extension: string,
+    handler: string,
+    executable: string,
+    state: string,
+    message: string,
+}
+
+component SettingRow inherits HorizontalLayout {
+    in property <SettingRowData> data;
+    in-out property <string> editor-value: data.value;
+    in-out property <string> scope-editor-value: data.scope-value;
+    callback edited(string);
+    callback scope-edited(string);
+    callback inherit-clicked();
+    callback default-clicked();
+    spacing: 12px;
+    padding-left: 8px;
+    padding-right: 8px;
+    min-height: 36px;
+    property <color> value-color: !data.enabled
+        ? ClipEncodePalette.disabled-value
+        : data.has-inherit
+            ? root.editor-value == data.base-value
+                ? ClipEncodePalette.inherited-value
+                : root.editor-value == data.default-value
+                    ? ClipEncodePalette.shipped-base-value
+                    : ClipEncodePalette.override-value
+            : root.editor-value == data.default-value
+                ? ClipEncodePalette.shipped-default
+                : ClipEncodePalette.changed-base-value;
+
+    if data.category: Text {
+        text: data.label;
+        font-size: 16px;
+        font-weight: 700;
+        vertical-alignment: center;
+        color: ClipEncodePalette.accent;
+    }
+    if !data.category: HorizontalLayout {
+        spacing: 8px;
+        Text {
+            text: data.label;
+            width: 230px;
+            vertical-alignment: center;
+            color: ClipEncodePalette.foreground;
+            Tooltip { text: @markdown("\{data.description}"); }
+        }
+        if data.choices.length > 0: ColorComboBox {
+            model: data.choices;
+            selected-index: data.choice-index;
+            current-value <=> root.editor-value;
+            value-color: root.value-color;
+            enabled: data.enabled;
+            horizontal-stretch: 1;
+            selected(value) => { root.edited(value); }
+            Tooltip { text: @markdown("\{data.description}"); }
+        }
+        if data.choices.length == 0: ColorLineEdit {
+            text <=> root.editor-value;
+            value-color: root.value-color;
+            enabled: data.enabled;
+            horizontal-stretch: 1;
+            edited(value) => { root.edited(value); }
+            Tooltip { text: @markdown("\{data.description}"); }
+        }
+        if data.scope-choices.length > 0: Text {
+            text: "Active in";
+            vertical-alignment: center;
+            color: ClipEncodePalette.secondary;
+        }
+        if data.scope-choices.length > 0: ColorComboBox {
+            model: data.scope-choices;
+            selected-index: data.scope-choice-index;
+            current-value <=> root.scope-editor-value;
+            value-color: root.value-color;
+            enabled: data.enabled;
+            width: 220px;
+            horizontal-stretch: 0;
+            selected(value) => { root.scope-edited(value); }
+            Tooltip { text: @markdown("Choose when this shortcut is active. Changing scope moves the existing key to that scope."); }
+        }
+        if data.has-inherit: Button {
+            text: "Use base";
+            enabled: data.enabled;
+            clicked => { root.inherit-clicked(); }
+            Tooltip { text: @markdown("Remove this override and inherit the configured base profile value."); }
+        }
+        if !data.has-inherit: Button {
+            text: "Default";
+            enabled: data.enabled;
+            clicked => { root.default-clicked(); }
+            Tooltip { text: @markdown("Restore the shipped default. For shortcuts, this resets both the key and active scope."); }
+        }
+    }
+}
+
+export component MainWindow inherits Window {
+    title: "MPV Anki Clips Config";
+    icon: @image-url("../assets/app_icon.svg");
+    width: 1120px;
+    height: 780px;
+    background: ClipEncodePalette.background;
+
+    in-out property <string> config-root;
+    in-out property <string> path-status;
+    in-out property <string> status;
+    in-out property <string> profile-status;
+    in-out property <string> profile-hint;
+    in-out property <string> selected-profile;
+    in-out property <string> active-profile;
+    in-out property <string> profile-name;
+    in-out property <[string]> profiles;
+    in-out property <[SettingRowData]> core-rows;
+    in-out property <[SettingRowData]> binding-rows;
+    in-out property <[SettingRowData]> profile-rows;
+    in-out property <string> scan-results;
+    in-out property <[ToolScanRow]> scan-tool-results;
+    in-out property <string> association-status;
+    in-out property <[AssociationRow]> association-results;
+    in-out property <bool> shortcut-enabled: false;
+    in-out property <bool> scan-running: false;
+    in-out property <bool> association-running: false;
+
+    callback browse-root();
+    callback load-root(string);
+    callback open-current-config(int);
+    callback open-script-opts();
+    callback scan-tools();
+    callback check-media-associations();
+    callback setting-edited(int, int, string);
+    callback binding-scope-edited(string, string);
+    callback setting-inherit(int, string);
+    callback setting-default(int, string);
+    callback save-page(int);
+    callback select-profile(string);
+    callback set-active-profile(string);
+    callback add-profile(string);
+    callback rename-profile(string);
+    callback remove-profile();
+    callback create-shortcut();
+
+    property <int> active-tab: 0;
+
+    VerticalLayout {
+        padding: 14px;
+        spacing: 8px;
+
+        Text {
+            text: "Portable editor · edits mpv's existing script-opts config · restart mpv after changes";
+            color: ClipEncodePalette.secondary;
+            font-size: 14px;
+        }
+        HorizontalLayout {
+            spacing: 8px;
+            Text { text: "mpv config folder:"; vertical-alignment: center; }
+            LineEdit {
+                text <=> root.config-root;
+                horizontal-stretch: 1;
+                accepted(value) => { root.load-root(value); }
+            }
+            Button { text: "Browse…"; clicked => { root.browse-root(); } }
+            Button { text: "Load folder"; clicked => { root.load-root(root.config-root); } }
+            Button {
+                text: "Create shortcut…";
+                enabled: root.shortcut-enabled;
+                clicked => { root.create-shortcut(); }
+            }
+        }
+        Text {
+            text: root.path-status;
+            color: ClipEncodePalette.secondary;
+            wrap: word-wrap;
+        }
+        HorizontalLayout {
+            spacing: 8px;
+            Button {
+                text: "Open current .conf";
+                enabled: !root.path-status.is-empty && root.active-tab != 3;
+                clicked => { root.open-current-config(root.active-tab); }
+            }
+            Button {
+                text: "Open script-opts folder";
+                enabled: !root.path-status.is-empty;
+                clicked => { root.open-script-opts(); }
+            }
+        }
+
+        HorizontalLayout {
+            spacing: 4px;
+            Button { text: root.active-tab == 0 ? "> Core settings" : "Core settings"; clicked => { root.active-tab = 0; } }
+            Button { text: root.active-tab == 1 ? "> Key bindings" : "Key bindings"; clicked => { root.active-tab = 1; } }
+            Button { text: root.active-tab == 2 ? "> Profiles" : "Profiles"; clicked => { root.active-tab = 2; } }
+            Button { text: root.active-tab == 3 ? "> Scan OS config" : "Scan OS config"; clicked => { root.active-tab = 3; } }
+            Rectangle { horizontal-stretch: 1; background: transparent; }
+        }
+
+        if root.active-tab == 0: VerticalLayout {
+            spacing: 6px;
+            Button { text: "Save changes"; clicked => { root.save-page(0); } }
+            ScrollView {
+                content-width: self.width;
+                VerticalLayout {
+                    spacing: 4px;
+                    for row[index] in root.core-rows: SettingRow {
+                        data: row;
+                        edited(value) => { root.setting-edited(0, index, value); }
+                        inherit-clicked => { root.setting-inherit(0, row.key); }
+                        default-clicked => { root.setting-default(0, row.key); }
+                    }
+                }
+            }
+        }
+
+        if root.active-tab == 1: VerticalLayout {
+            spacing: 6px;
+            Text {
+                text: "Set a shortcut and choose where it is active: Global (any time) or Advanced menu only. Changing scope moves the existing key. Leave the key blank to disable it; duplicate keys are rejected within the selected scope. Default restores both the shortcut and its scope. Stable action names remain available through mpv's input.conf.";
+                wrap: word-wrap;
+                color: ClipEncodePalette.secondary;
+            }
+            Button { text: "Save changes"; clicked => { root.save-page(1); } }
+            ScrollView {
+                content-width: self.width;
+                VerticalLayout {
+                    spacing: 4px;
+                    for row[index] in root.binding-rows: SettingRow {
+                        data: row;
+                        edited(value) => { root.setting-edited(1, index, value); }
+                        scope-edited(value) => { root.binding-scope-edited(row.key, value); }
+                        inherit-clicked => { root.setting-inherit(1, row.key); }
+                        default-clicked => { root.setting-default(1, row.key); }
+                    }
+                }
+            }
+        }
+
+        if root.active-tab == 2: VerticalLayout {
+            spacing: 6px;
+            Text {
+                text: "Choose a profile to edit. The required base profile provides shared defaults; custom profiles save only overrides. Removing a custom profile from the list keeps its config file on disk.";
+                wrap: word-wrap;
+                color: ClipEncodePalette.secondary;
+            }
+            HorizontalLayout {
+                spacing: 8px;
+                Text { text: "Profile to edit:"; vertical-alignment: center; }
+                ComboBox {
+                    model: root.profiles;
+                    current-value: root.selected-profile;
+                    horizontal-stretch: 1;
+                    selected(value) => { root.select-profile(value); }
+                }
+                LineEdit {
+                    text <=> root.profile-name;
+                    placeholder-text: "New profile name";
+                }
+                Button { text: "Add…"; clicked => { root.add-profile(root.profile-name); } }
+                Button { text: "Rename…"; clicked => { root.rename-profile(root.profile-name); } }
+                Button { text: "Remove from list"; clicked => { root.remove-profile(); } }
+            }
+            HorizontalLayout {
+                spacing: 8px;
+                Text { text: "Profile loaded when mpv starts:"; vertical-alignment: center; }
+                ComboBox {
+                    model: root.profiles;
+                    current-value: root.active-profile;
+                    horizontal-stretch: 1;
+                    selected(value) => { root.set-active-profile(value); }
+                }
+            }
+            Text { text: root.profile-hint; wrap: word-wrap; color: ClipEncodePalette.secondary; }
+            Button { text: "Save profile"; clicked => { root.save-page(2); } }
+            ScrollView {
+                content-width: self.width;
+                VerticalLayout {
+                    spacing: 4px;
+                    for row[index] in root.profile-rows: SettingRow {
+                        data: row;
+                        edited(value) => { root.setting-edited(2, index, value); }
+                        inherit-clicked => { root.setting-inherit(2, row.key); }
+                        default-clicked => { root.setting-default(2, row.key); }
+                    }
+                }
+            }
+            Text { text: root.profile-status; wrap: word-wrap; color: ClipEncodePalette.active; }
+        }
+
+        if root.active-tab == 3: VerticalLayout {
+            spacing: 8px;
+            Text {
+                text: "Scan now checks PATH and common install/config locations. Check media defaults reads the operating system's current handlers.";
+                wrap: word-wrap;
+                color: ClipEncodePalette.secondary;
+            }
+            HorizontalLayout {
+                spacing: 8px;
+                Button {
+                    text: root.scan-running ? "Scanning…" : "Scan now";
+                    enabled: !root.scan-running;
+                    clicked => { root.scan-tools(); }
+                }
+                Button {
+                    text: root.association-running ? "Checking…" : "Check media defaults";
+                    enabled: !root.association-running;
+                    clicked => { root.check-media-associations(); }
+                    Tooltip {
+                        text: @markdown("Read the operating system's current default app for common video and audio file types. This does not change file associations.");
+                    }
+                }
+            }
+            ScrollView {
+                vertical-stretch: 1;
+                content-width: self.width;
+                VerticalLayout {
+                    spacing: 6px;
+                    if root.scan-tool-results.length > 0: Text {
+                        text: "Tools";
+                        color: ClipEncodePalette.accent;
+                        font-size: 16px;
+                        font-weight: 700;
+                    }
+                    for result in root.scan-tool-results: VerticalLayout {
+                        spacing: 2px;
+                        Text {
+                            text: result.name;
+                            color: ClipEncodePalette.foreground;
+                            font-weight: 700;
+                        }
+                        if result.found-on-path: Text {
+                            text: "Found on PATH: \{result.path}";
+                            wrap: word-wrap;
+                            color: ClipEncodePalette.shipped-base-value;
+                        }
+                        if !result.found-on-path: Text {
+                            text: "Not found on PATH";
+                            color: ClipEncodePalette.disabled-value;
+                        }
+                        for path in result.other-paths: Text {
+                            text: "Other install: \{path}";
+                            wrap: word-wrap;
+                            color: ClipEncodePalette.changed-base-value;
+                        }
+                    }
+                    Text {
+                        text: root.scan-results;
+                        wrap: word-wrap;
+                        color: ClipEncodePalette.foreground;
+                    }
+                }
+            }
+            Text {
+                text: "Default media apps";
+                color: ClipEncodePalette.accent;
+                font-size: 16px;
+                font-weight: 700;
+            }
+            Text {
+                text: root.association-status;
+                wrap: word-wrap;
+                color: ClipEncodePalette.secondary;
+            }
+            ScrollView {
+                vertical-stretch: 1;
+                content-width: self.width;
+                VerticalLayout {
+                    spacing: 4px;
+
+                    for result in root.association-results: VerticalLayout {
+                        spacing: 2px;
+                        property <color> result-color: result.state == "mpv"
+                            ? ClipEncodePalette.shipped-base-value
+                            : result.state == "other"
+                                ? ClipEncodePalette.changed-base-value
+                                : ClipEncodePalette.disabled-value;
+
+                        Text {
+                            text: ".\{result.extension}";
+                            color: ClipEncodePalette.foreground;
+                            font-weight: 700;
+                        }
+                        if !result.handler.is-empty: Text {
+                            text: "Default app: \{result.handler}";
+                            wrap: word-wrap;
+                            color: result-color;
+                        }
+                        if !result.executable.is-empty: Text {
+                            text: "Launch path: \{result.executable}";
+                            wrap: word-wrap;
+                            color: result-color;
+                        }
+                        if result.handler.is-empty && result.message.is-empty: Text {
+                            text: "No default handler configured";
+                            color: ClipEncodePalette.disabled-value;
+                        }
+                        if !result.message.is-empty: Text {
+                            text: result.message;
+                            wrap: word-wrap;
+                            color: ClipEncodePalette.secondary;
+                        }
+                    }
+                }
+            }
+        }
+        Text {
+            text: root.status;
+            color: ClipEncodePalette.active;
+            wrap: word-wrap;
+        }
+    }
+}
