@@ -7,6 +7,37 @@ There are two binding contexts:
 
 Each action has one configured key and one `binding_scope_<key-setting>` value: `advanced-menu` or `global`. The bundled scope defaults preserve the current behavior. Changing an action's scope moves its existing key; it does not create a second shortcut or allow the action in both contexts. Key settings retain their existing names: advanced actions use `menu_key_*`, global actions use `global_key_*`, and the menu opener remains `menu_key_open`.
 
+### Key binding precedence
+
+For the same key, precedence increases upward:
+
+```text
+       HIGHEST
+          ^
+          |
+  Forced script binding
+  (mp.add_forced_key_binding)
+          ^
+          |
+  User binding in input.conf
+          ^
+          |
+  Regular script binding
+  (mp.add_key_binding)
+          ^
+          |
+  mpv built-in default binding
+       LOWEST
+```
+
+In other words, a regular add-on binding can replace an mpv built-in default, but a matching user binding in `input.conf` takes precedence over it. A forced script binding takes precedence over both. Built-in defaults are absent if mpv is started with `--no-input-default-bindings`.
+
+### What scope means for this add-on
+
+The diagram below shows why an advanced-menu shortcut can appear to override `input.conf` while the menu is open, then lose that precedence when moved to global scope. It focuses on the regular global and temporary menu-only bindings; the separate forced global exception is not shown.
+
+![MPV Anki Clips menu-only and global shortcut precedence](./bindings-scope-precedence.svg)
+
 The config GUI's **Key bindings** page keeps each action's shortcut and scope together on one row. Its **Active in** selector offers **Advanced menu only** and **Global (any time)**; rows are grouped by what the actions do, not by scope. The **Default** button restores both that action's shipped key and scope. Leave a key blank to disable the add-on's default shortcut.
 
 Duplicate shortcuts are rejected when you save if they share a selected context; assigning the same key to actions in different contexts is allowed. If a scope change would create a duplicate in its destination context, resolve the duplicate before saving.
@@ -102,6 +133,8 @@ These actions default to the global scope. Their one key can be moved to the adv
 | `Ctrl+H` | Replay current subtitle | `mpv-anki-clips-sub-replay` |
 | `Ctrl+L` | Play to next subtitle end | `mpv-anki-clips-sub-play-up-to-next` |
 | `Ctrl+Y` | Restart mpv with current file (debug) | `mpv-anki-clips-restart-mpv-current-file` |
+
+**Forced-binding exception:** Copy primary subtitle is a global action, but its key uses a forced script binding. It therefore takes precedence over a matching `input.conf` binding; the other global keys use regular script bindings.
 
 On Windows, `Ctrl+Y` opens a new PowerShell console. On Linux, it opens a terminal using the first supported installed emulator (`x-terminal-emulator`, GNOME Terminal, Konsole, XFCE Terminal, or `xterm`); if none is available, it reports an error and leaves the current mpv session running.
 

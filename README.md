@@ -180,6 +180,8 @@ Global defaults include `Ctrl+g` for quick line selection, `Alt+g` for quick car
 
 For everyday setup, start with `deck_name`, `model_name`, the `*_field_1` mappings, `copy_text_mode`, and the audio/video encoding settings in the shipped [core settings](src/mpv-anki-clips/exampleconfig/mpv-anki-clips-core.conf) and [base profile](src/mpv-anki-clips/exampleconfig/mpv-anki-clips-base.conf). Optional workflows use settings such as `remote_ffmpeg_enabled`, `queue_server_enabled`, `clip_log_enabled`, and `test_encode_output_dir`; their guides explain the behavior and setup.
 
+The shipped base profile uses FFmpeg's `libsvtav1` encoder for video. It is an efficient AV1 option, but requires a recent FFmpeg build and is not included in every build; encoding will fail if the FFmpeg used by the add-on does not provide it. This can affect Linux distribution packages even when fully updated. Install a separate FFmpeg build that includes the encoder and set `ffmpeg_exec` in the core settings to its executable path, or choose a codec supported by your existing build.
+
 ## Additional Guides
 
 - [Portable configuration GUI](howto/config_gui.md)
