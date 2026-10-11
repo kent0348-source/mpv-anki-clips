@@ -86,7 +86,7 @@ return {
         run = function()
             local encoder = encoder_loader.load_encoder({ is_win = false })
             local config = minimal_encode_config(false)
-            config.ffmpeg_exec = '/home/ghoeb/ffmpeg_build/bin/ffmpeg'
+            config.ffmpeg_exec = '/home/testuser/ffmpeg_build/bin/ffmpeg'
             encoder.init(config)
             encoder.set_media_snapshot({ has_video_track = true, has_audio_track = true, track_list = {} })
 

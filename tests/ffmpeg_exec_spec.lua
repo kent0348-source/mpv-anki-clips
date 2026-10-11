@@ -31,7 +31,7 @@ return {
             clear_modules()
             local resolver = require('encoder.ffmpeg_exec')
 
-            local linux_path = '/home/ghoeb/ffmpeg_build/bin/ffmpeg'
+            local linux_path = '/home/testuser/ffmpeg_build/bin/ffmpeg'
             local windows_path = [[C:\ffmpeg custom\bin\ffmpeg.exe]]
             assertx.equals(linux_path, resolver.resolve(linux_path), 'Linux executable path should be passed through unchanged')
             assertx.equals(windows_path, resolver.resolve(windows_path), 'Windows executable path should be passed through unchanged')
@@ -78,7 +78,7 @@ return {
             end
             clear_modules()
             local codec_support = require('encoder.codec_support')
-            local configured_path = '/home/ghoeb/ffmpeg_build/bin/ffmpeg'
+            local configured_path = '/home/testuser/ffmpeg_build/bin/ffmpeg'
             codec_support.configure({ ffmpeg_exec = configured_path })
 
             assertx.equals(configured_path, commands[#commands][1], 'codec checks should invoke the configured executable')
