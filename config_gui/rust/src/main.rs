@@ -785,9 +785,9 @@ fn scan_media_associations_async(ui: &MainWindow) {
 }
 
 fn create_shortcut() -> Result<(), String> {
-    let executable = std::env::current_exe().map_err(|error| error.to_string())?;
     #[cfg(target_os = "windows")]
     {
+        let executable = std::env::current_exe().map_err(|error| error.to_string())?;
         let appdata = std::env::var_os("APPDATA")
             .map(PathBuf::from)
             .unwrap_or_else(|| dirs::home_dir().unwrap_or_default());
@@ -803,28 +803,9 @@ fn create_shortcut() -> Result<(), String> {
         }
         Ok(())
     }
-    #[cfg(target_os = "linux")]
+    #[cfg(not(target_os = "windows"))]
     {
-        create_linux_shortcut(
-            &executable,
-            dirs::data_dir()
-                .unwrap_or_else(|| dirs::home_dir().unwrap_or_default().join(".local/share"))
-                .join("applications/mpv-anki-clips-config.desktop"),
-        )?;
-        if ask_yes_no("Desktop shortcut", "Also create a shortcut on the Desktop?") {
-            create_linux_shortcut(
-                &executable,
-                dirs::home_dir()
-                    .unwrap_or_default()
-                    .join("Desktop/mpv-anki-clips-config.desktop"),
-            )?;
-        }
-        Ok(())
-    }
-    #[cfg(target_os = "macos")]
-    {
-        let _ = executable;
-        Err("Shortcut creation is not supported on macOS.".to_owned())
+        Err("Shortcut creation is currently supported only on Windows.".to_owned())
     }
 }
 
@@ -873,45 +854,6 @@ fn create_windows_shortcut(executable: &Path, shortcut: PathBuf) -> Result<(), S
         })
 }
 
-#[cfg(target_os = "linux")]
-fn create_linux_shortcut(executable: &Path, shortcut: PathBuf) -> Result<(), String> {
-    let icon = dirs::data_dir()
-        .unwrap_or_else(|| dirs::home_dir().unwrap_or_default().join(".local/share"))
-        .join("icons/hicolor/scalable/apps/mpv-anki-clips-config.svg");
-    let icon_parent = icon.parent().ok_or("Icon path has no parent folder")?;
-    std::fs::create_dir_all(icon_parent).map_err(|error| error.to_string())?;
-    std::fs::write(&icon, include_str!("../assets/app_icon.svg"))
-        .map_err(|error| error.to_string())?;
-
-    let parent = shortcut
-        .parent()
-        .ok_or("Shortcut path has no parent folder")?;
-    std::fs::create_dir_all(parent).map_err(|error| error.to_string())?;
-    let quote = |value: &str| {
-        format!(
-            "\"{}\"",
-            value
-                .replace('\\', "\\\\")
-                .replace('"', "\\\"")
-                .replace('`', "\\`")
-                .replace('$', "\\$")
-        )
-    };
-    let content = format!(
-        "[Desktop Entry]\nType=Application\nName=MPV Anki Clips Config\nComment=Edit MPV Anki Clips profiles and settings\nExec={}\nPath={}\nIcon=mpv-anki-clips-config\nTerminal=false\nCategories=AudioVideo;Settings;\n",
-        quote(&executable.to_string_lossy()),
-        quote(&executable.parent().unwrap_or_else(|| Path::new(".")).to_string_lossy())
-    );
-    std::fs::write(&shortcut, content).map_err(|error| error.to_string())?;
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        std::fs::set_permissions(&shortcut, std::fs::Permissions::from_mode(0o755))
-            .map_err(|error| error.to_string())?;
-    }
-    Ok(())
-}
-
 fn main() -> Result<(), slint::PlatformError> {
     let ui = MainWindow::new()?;
     let state = Rc::new(RefCell::new(EditorState::new()));
@@ -923,7 +865,7 @@ fn main() -> Result<(), slint::PlatformError> {
         "Select Check media defaults to inspect OS file associations.".into(),
     );
     ui.set_association_results(ModelRc::new(VecModel::from(Vec::<AssociationRow>::new())));
-    ui.set_shortcut_enabled(cfg!(any(target_os = "windows", target_os = "linux")));
+    ui.set_shortcut_enabled(cfg!(target_os = "windows"));
 
     {
         let state = state.clone();

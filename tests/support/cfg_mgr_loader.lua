@@ -179,6 +179,7 @@ function M.load(option_files)
         menu_font_name = 'sans-serif',
         show_selected_text = true,
         ankiconnect_url = '127.0.0.1:8765',
+        ankiconnect_api_key = '',
         fix_subtitle_duration = false,
         clip_log_enabled = false,
         clip_log_save_dir = '',

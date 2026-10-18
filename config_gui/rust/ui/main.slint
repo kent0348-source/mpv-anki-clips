@@ -253,6 +253,7 @@ export struct SettingRowData {
     choice-index: int,
     choices: [string],
     scope-value: string,
+    scope-default-value: string,
     scope-choice-index: int,
     scope-choices: [string],
     description: string,
@@ -299,6 +300,11 @@ component SettingRow inherits HorizontalLayout {
             : root.editor-value == data.default-value
                 ? ClipEncodePalette.shipped-default
                 : ClipEncodePalette.changed-base-value;
+    property <color> scope-value-color: !data.enabled
+        ? ClipEncodePalette.disabled-value
+        : root.scope-editor-value == data.scope-default-value
+            ? ClipEncodePalette.shipped-default
+            : ClipEncodePalette.changed-base-value;
 
     if data.category: Text {
         text: data.label;
@@ -343,7 +349,7 @@ component SettingRow inherits HorizontalLayout {
             model: data.scope-choices;
             selected-index: data.scope-choice-index;
             current-value <=> root.scope-editor-value;
-            value-color: root.value-color;
+            value-color: root.scope-value-color;
             enabled: data.enabled;
             width: 220px;
             horizontal-stretch: 0;
@@ -432,9 +438,10 @@ export component MainWindow inherits Window {
             Button { text: "Browse…"; clicked => { root.browse-root(); } }
             Button { text: "Load folder"; clicked => { root.load-root(root.config-root); } }
             Button {
-                text: "Create shortcut…";
+                text: root.shortcut-enabled ? "Create shortcut…" : "Create shortcut… (Windows only)";
                 enabled: root.shortcut-enabled;
                 clicked => { root.create-shortcut(); }
+                Tooltip { text: @markdown("Creating application shortcuts is currently supported only on Windows."); }
             }
         }
         Text {

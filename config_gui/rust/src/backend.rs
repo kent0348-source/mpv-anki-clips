@@ -884,6 +884,7 @@ impl SettingsPage {
                         choice_index,
                         choices,
                         scope_value: String::new(),
+                        scope_default_value: String::new(),
                         scope_choice_index: -1,
                         scope_choices: Vec::new(),
                         description: descriptions.get(key).cloned().unwrap_or_default(),
@@ -1014,6 +1015,11 @@ fn build_binding_rows(page: &SettingsPage, catalog: &SettingsCatalog) -> Vec<Set
                 .get(&scope_key)
                 .map(String::as_str)
                 .unwrap_or_default();
+            let scope_default = catalog
+                .core_defaults
+                .get(&scope_key)
+                .map(String::as_str)
+                .unwrap_or_default();
             let scope_choice_index = BINDING_SCOPE_CHOICES
                 .iter()
                 .position(|(value, _)| *value == scope)
@@ -1024,6 +1030,11 @@ fn build_binding_rows(page: &SettingsPage, catalog: &SettingsCatalog) -> Vec<Set
                 .find(|(value, _)| *value == scope)
                 .map(|(_, label)| (*label).to_owned())
                 .unwrap_or_else(|| format!("Invalid scope: {scope}"));
+            let scope_default_label = BINDING_SCOPE_CHOICES
+                .iter()
+                .find(|(value, _)| *value == scope_default)
+                .map(|(_, label)| (*label).to_owned())
+                .unwrap_or_else(|| format!("Invalid scope: {scope_default}"));
             rows.push(make_row(
                 binding_action_label(key),
                 (*key).clone(),
@@ -1036,6 +1047,7 @@ fn build_binding_rows(page: &SettingsPage, catalog: &SettingsCatalog) -> Vec<Set
                         .unwrap_or_default(),
                     enabled: true,
                     scope_value: scope_label,
+                    scope_default_value: scope_default_label,
                     scope_choice_index,
                     scope_choices: BINDING_SCOPE_CHOICES
                         .iter()
@@ -1056,6 +1068,7 @@ struct RowOptions {
     choice_index: i32,
     choices: Vec<String>,
     scope_value: String,
+    scope_default_value: String,
     scope_choice_index: i32,
     scope_choices: Vec<String>,
     description: String,
@@ -1080,6 +1093,7 @@ fn make_row(label: String, key: String, options: RowOptions) -> SettingRowData {
                 .collect::<Vec<_>>(),
         )),
         scope_value: SharedString::from(options.scope_value),
+        scope_default_value: SharedString::from(options.scope_default_value),
         scope_choice_index: options.scope_choice_index,
         scope_choices: ModelRc::new(VecModel::from(
             options
@@ -1473,11 +1487,13 @@ mod tests {
             .find(|row| row.key.as_str() == "global_key_copy_primary")
             .unwrap();
         assert_eq!(copy_primary.scope_value, "Global (any time)");
+        assert_eq!(copy_primary.scope_default_value, "Global (any time)");
         let seek_next = action_rows
             .iter()
             .find(|row| row.key.as_str() == "menu_key_seek_next")
             .unwrap();
         assert_eq!(seek_next.scope_value, "Advanced menu only");
+        assert_eq!(seek_next.scope_default_value, "Advanced menu only");
         let category_labels: Vec<&str> = bindings
             .rows
             .iter()
@@ -1506,6 +1522,27 @@ mod tests {
             row.key.as_str().starts_with("global_key_")
                 || row.key.as_str().starts_with("binding_scope_")
         }));
+    }
+
+    #[test]
+    fn binding_scope_default_is_independent_of_shortcut_value() {
+        let catalog = SettingsCatalog::load();
+        let key = "menu_key_seek_next";
+        let scope_key = format!("binding_scope_{key}");
+        let mut bindings = SettingsPage::new(PageKind::Bindings);
+        bindings.values = catalog.core_defaults.clone();
+        bindings.values.insert(scope_key, "global".to_owned());
+
+        update_rows(&mut bindings, &catalog);
+
+        let row = bindings
+            .rows
+            .iter()
+            .find(|row| row.key.as_str() == key)
+            .unwrap();
+        assert_eq!(row.value, catalog.core_defaults[key]);
+        assert_eq!(row.scope_value, "Global (any time)");
+        assert_eq!(row.scope_default_value, "Advanced menu only");
     }
 
     #[test]

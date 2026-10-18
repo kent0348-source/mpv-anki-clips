@@ -1,7 +1,7 @@
 local assertx = require('tests.support.assert')
 local json = require('tests.support.json')
 
-local function load_client(responses)
+local function load_client(responses, config)
     package.loaded['ankiconnect'] = nil
     package.loaded['mp.utils'] = nil
     package.loaded['mp.msg'] = nil
@@ -58,7 +58,10 @@ local function load_client(responses)
     }
 
     local client = require('ankiconnect')
-    client.init({ ankiconnect_url = '127.0.0.1:8765' }, platform)
+    client.init(config or {
+        ankiconnect_url = '127.0.0.1:8765',
+        ankiconnect_api_key = '',
+    }, platform)
     return client, captured
 end
 
@@ -92,6 +95,37 @@ local function append_and_capture(client, fields, tag)
 end
 
 return {
+    {
+        name = 'AnkiConnect sends configured API keys as top-level legacy request data',
+        run = function()
+            local client, captured = load_client({
+                api_response('{"result":"/collection.media","error":null}'),
+            }, {
+                ankiconnect_url = '127.0.0.1:8765',
+                ankiconnect_api_key = 'test-key',
+            })
+
+            assertx.equals('/collection.media', client.get_media_dir_path())
+            assertx.equals('getMediaDirPath', captured.requests[1].request.action)
+            assertx.equals(6, captured.requests[1].request.version)
+            assertx.equals('test-key', captured.requests[1].request.key)
+        end,
+    },
+    {
+        name = 'AnkiConnect creates decks with the dedicated createDeck action',
+        run = function()
+            local client, captured = load_client({
+                api_response('{"result":42,"error":null}'),
+            })
+            client.create_deck('mpv-anki-clips')
+
+            assertx.equals(1, #captured.requests)
+            assertx.equals('createDeck', captured.requests[1].request.action)
+            assertx.equals(6, captured.requests[1].request.version)
+            assertx.equals('mpv-anki-clips', captured.requests[1].request.params.deck)
+            assertx.equals(nil, captured.requests[1].request.params.cards)
+        end,
+    },
     {
         name = 'AnkiConnect update succeeds only after read-back matches',
         run = function()

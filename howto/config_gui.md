@@ -6,7 +6,7 @@ The optional standalone GUI edits the same mpv `script-opts` config files as the
 
 Download the portable GUI package for your operating system and extract its complete `mpv-anki-clips-config` folder to a writable location. Launch the executable inside that folder. On Windows, it runs as a windowed app without an accompanying console window and includes an application icon. It does not need a conventional installer, administrator privileges, or an installed Rust toolchain. Install the add-on runtime separately in mpv's `scripts` directory.
 
-On Linux, use the GUI's **Create shortcut…** action to add an application-menu entry. It installs the app icon in your user icon theme and references it from the shortcut; you can also choose to create a Desktop shortcut.
+The **Create shortcut…** action is currently supported only on Windows. On Linux and macOS it is disabled and marked **Windows only**; the GUI does not create application-menu or Desktop shortcuts on those platforms.
 
 Use **Browse** if the config folder is not at its standard location. The GUI shows the `script-opts` path it will edit. Select the correct mpv config root before saving, particularly if mpv uses a portable config or custom `--config-dir`.
 

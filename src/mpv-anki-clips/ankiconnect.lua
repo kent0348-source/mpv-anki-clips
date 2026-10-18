@@ -16,10 +16,20 @@ local function resolve_config(config_override)
 end
 
 self.execute = function(request, completion_fn, config_override)
+    local cfg = resolve_config(config_override)
+    local request_data = request
+    local api_key = cfg.ankiconnect_api_key
+    if type(api_key) == 'string' and api_key ~= '' then
+        request_data = {}
+        for key, value in pairs(request) do
+            request_data[key] = value
+        end
+        request_data.key = api_key
+    end
+
     -- utils.format_json returns a string
     -- On error, request_json will contain "null", not nil.
-    local request_json, error = utils.format_json(request)
-    local cfg = resolve_config(config_override)
+    local request_json, error = utils.format_json(request_data)
 
     if error ~= nil or request_json == nil or request_json == "null" then
         local result = {
@@ -96,11 +106,10 @@ end
 
 self.create_deck = function(deck_name)
     local args = {
-        action = "changeDeck",
+        action = "createDeck",
         version = 6,
         params = {
-            cards = {},
-            deck = deck_name
+            deck = deck_name,
         }
     }
     local result_notify = function(_, result, _)
